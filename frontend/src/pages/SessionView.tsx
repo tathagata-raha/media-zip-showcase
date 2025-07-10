@@ -1,73 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Clock, Share2, Download, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Clock, Share2, Download, AlertCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MediaPlayer, type MediaItem } from '@/components/MediaPlayer';
 import { MediaThumbnails } from '@/components/MediaThumbnails';
 import { useToast } from '@/hooks/use-toast';
-
-// Mock media data - in real app this would come from your FastAPI backend
-const mockMediaData: Record<string, MediaItem[]> = {
-  'abc123': [
-    {
-      id: '1',
-      type: 'slideshow',
-      url: '/api/placeholder/video/720/480',
-      filename: 'Generated_Slideshow.mp4',
-      duration: 36
-    },
-    {
-      id: '2',
-      type: 'image',
-      url: '/api/placeholder/800/600',
-      filename: 'beach_sunset.jpg'
-    },
-    {
-      id: '3',
-      type: 'image',
-      url: '/api/placeholder/800/600',
-      filename: 'mountain_view.jpg'
-    },
-    {
-      id: '4',
-      type: 'video',
-      url: '/api/placeholder/video/720/480',
-      filename: 'family_video.mp4',
-      duration: 15
-    },
-    {
-      id: '5',
-      type: 'image',
-      url: '/api/placeholder/800/600',
-      filename: 'city_lights.jpg'
-    }
-  ],
-  'def456': [
-    {
-      id: '6',
-      type: 'image',
-      url: '/api/placeholder/800/600',
-      filename: 'nature_photo.jpg'
-    }
-  ]
-};
+import { apiService, type Session } from '@/lib/api';
 
 const SessionView = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState('');
   const [isExpired, setIsExpired] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Mock session data - in real app this would come from your FastAPI backend
-  const media = sessionId ? mockMediaData[sessionId] || [] : [];
-  const expiresAt = new Date(Date.now() + 4 * 60 * 60 * 1000); // 4 hours from now
-
+  // Load session data
   useEffect(() => {
+    if (!sessionId) return;
+    
+    const loadSession = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const sessionData = await apiService.getSession(sessionId);
+        setSession(sessionData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load session');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadSession();
+  }, [sessionId]);
+
+  // Update countdown timer
+  useEffect(() => {
+    if (!session) return;
+    
     const updateTimeRemaining = () => {
       const now = new Date();
+      const expiresAt = new Date(session.expires_at);
       const diff = expiresAt.getTime() - now.getTime();
       
       if (diff <= 0) {
@@ -87,7 +65,7 @@ const SessionView = () => {
     const interval = setInterval(updateTimeRemaining, 1000);
     
     return () => clearInterval(interval);
-  }, [expiresAt]);
+  }, [session]);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -123,6 +101,49 @@ const SessionView = () => {
     // In real app, this would trigger a download endpoint
   };
 
+  // Convert session manifest to media items
+  const convertToMediaItems = (session: Session): MediaItem[] => {
+    const mediaItems: MediaItem[] = [];
+    
+    if (!session.manifest) return mediaItems;
+    
+    // Add slideshow first if available
+    if (session.manifest.slideshow_video) {
+      mediaItems.push({
+        id: 'slideshow',
+        type: 'slideshow',
+        url: apiService.getMediaUrl(session.session_id, session.manifest.slideshow_video),
+        filename: 'slideshow.mp4',
+        duration: session.manifest.images?.length * 3 || 30 // Estimate duration
+      });
+    }
+    
+    // Add images
+    session.manifest.images?.forEach((image, index) => {
+      mediaItems.push({
+        id: `image-${index}`,
+        type: 'image',
+        url: apiService.getMediaUrl(session.session_id, image.filename),
+        filename: image.filename
+      });
+    });
+    
+    // Add videos
+    session.manifest.videos?.forEach((video, index) => {
+      mediaItems.push({
+        id: `video-${index}`,
+        type: 'video',
+        url: apiService.getMediaUrl(session.session_id, video.filename),
+        filename: video.filename,
+        duration: video.duration
+      });
+    });
+    
+    return mediaItems;
+  };
+
+  const media = session ? convertToMediaItems(session) : [];
+
   if (!sessionId) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -142,15 +163,50 @@ const SessionView = () => {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <Loader2 className="mx-auto h-12 w-12 animate-spin mb-4" />
+            <h1 className="text-xl font-bold mb-2">Loading Session</h1>
+            <p className="text-muted-foreground mb-4">
+              Please wait while we load your media...
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (error || !session) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
+            <h1 className="text-xl font-bold mb-2">Session Not Found</h1>
+            <p className="text-muted-foreground mb-4">
+              {error || 'This session may have expired or been deleted.'}
+            </p>
+            <Button asChild>
+              <Link to="/">Return Home</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (media.length === 0) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
             <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h1 className="text-xl font-bold mb-2">Session Not Found</h1>
+            <h1 className="text-xl font-bold mb-2">No Media Found</h1>
             <p className="text-muted-foreground mb-4">
-              This session may have expired or been deleted.
+              This session doesn't contain any media files.
             </p>
             <Button asChild>
               <Link to="/">Return Home</Link>
@@ -197,7 +253,7 @@ const SessionView = () => {
               <div>
                 <h1 className="font-bold">Media Collection</h1>
                 <p className="text-sm text-muted-foreground">
-                  Session {sessionId?.slice(0, 8)}
+                  Session {session.session_id.slice(0, 8)}
                 </p>
               </div>
             </div>
@@ -234,10 +290,8 @@ const SessionView = () => {
           {/* Media Player */}
           <div className="lg:col-span-2 space-y-6">
             <MediaPlayer
-              media={media}
-              currentIndex={currentMediaIndex}
-              onIndexChange={setCurrentMediaIndex}
-              sessionId={sessionId}
+              media={media[currentMediaIndex] || null}
+              className="aspect-video"
             />
           </div>
           

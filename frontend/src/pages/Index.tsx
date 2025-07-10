@@ -1,35 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Upload, Zap, Clock, CheckCircle } from 'lucide-react';
 import { FileUpload } from '@/components/FileUpload';
 import { SlideshowOptions, type SlideshowConfig } from '@/components/SlideshowOptions';
-import { SessionStatus, type Session } from '@/components/SessionStatus';
+import { SessionStatus } from '@/components/SessionStatus';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-
-// Mock data for demo - in real app this would come from your FastAPI backend
-const mockSessions: Session[] = [
-  {
-    id: 'abc123',
-    status: 'ready',
-    sourceType: 'file',
-    sourceInfo: 'vacation_photos.zip',
-    createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-    mediaCount: { images: 12, videos: 3 }
-  },
-  {
-    id: 'def456',
-    status: 'processing',
-    sourceType: 'url',
-    sourceInfo: 'https://example.com/media.zip',
-    createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 4.5 * 60 * 60 * 1000).toISOString(),
-    progress: 65
-  }
-];
+import { useSessions, type SessionWithProgress } from '@/hooks/useSessions';
+import { apiService, type SlideshowOptions as ApiSlideshowOptions } from '@/lib/api';
 
 const Index = () => {
-  const [sessions, setSessions] = useState<Session[]>(mockSessions);
+  const { sessions, loading, error, addSession, removeSession } = useSessions();
   const [isUploading, setIsUploading] = useState(false);
   const [slideshowConfig, setSlideshowConfig] = useState<SlideshowConfig>({
     duration: 3,
@@ -40,55 +20,54 @@ const Index = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Mock upload handler - replace with actual API calls to your FastAPI backend
-  const handleUpload = async (source: File | string, type: 'file' | 'url') => {
+  // Real upload handler with API integration
+  const handleUpload = async (source: File | string, type: 'file' | 'url' | 'google_drive') => {
     setIsUploading(true);
     
-    // Simulate upload process
-    const newSession: Session = {
-      id: Math.random().toString(36).substr(2, 9),
-      status: 'downloading',
-      sourceType: type,
-      sourceInfo: type === 'file' ? (source as File).name : source as string,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
-      progress: 0
-    };
-    
-    setSessions(prev => [newSession, ...prev]);
-    
-    toast({
-      title: "Upload started",
-      description: `Processing ${type === 'file' ? 'file' : 'URL'}: ${newSession.sourceInfo}`,
-    });
-    
-    // Simulate progress updates
-    setTimeout(() => {
-      setSessions(prev => prev.map(s => 
-        s.id === newSession.id 
-          ? { ...s, status: 'processing', progress: 45 }
-          : s
-      ));
-    }, 2000);
-    
-    setTimeout(() => {
-      setSessions(prev => prev.map(s => 
-        s.id === newSession.id 
-          ? { 
-              ...s, 
-              status: 'ready', 
-              progress: 100,
-              mediaCount: { images: Math.floor(Math.random() * 20) + 5, videos: Math.floor(Math.random() * 5) }
-            }
-          : s
-      ));
-      setIsUploading(false);
+    try {
+      // Convert slideshow config to API format
+      const apiSlideshowOptions: ApiSlideshowOptions = {
+        image_duration: slideshowConfig.duration,
+        transition_effect: slideshowConfig.transition as 'none' | 'fade' | 'crossfade',
+        resolution: slideshowConfig.resolution === '1280x720' ? [1280, 720] : [1920, 1080],
+        background_music: slideshowConfig.includeAudio ? 'auto' : undefined,
+      };
+      
+      let response;
+      
+      if (type === 'file') {
+        response = await apiService.uploadFile(source as File, apiSlideshowOptions);
+      } else {
+        const url = source as string;
+        // The 'type' from FileUpload ('url' or 'google_drive') directly matches the API's expected source_type
+        response = await apiService.submitUrl(url, type, apiSlideshowOptions);
+      }
+      
+      // Add session to local state
+      const newSession: SessionWithProgress = {
+        session_id: response.session_id,
+        status: response.status as any,
+        submitted_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString(),
+        progress: 0,
+      };
+      
+      addSession(newSession);
       
       toast({
-        title: "Processing complete!",
-        description: "Your media is ready to view",
+        title: "Upload started",
+        description: `Processing ${type === 'file' ? 'file' : 'URL'}: ${type === 'file' ? (source as File).name : source as string}`,
       });
-    }, 5000);
+      
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "An error occurred during upload",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleViewSession = (sessionId: string) => {
@@ -96,10 +75,12 @@ const Index = () => {
   };
 
   const handleDeleteSession = (sessionId: string) => {
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    // Note: Backend doesn't have a delete endpoint, so we just remove from local state
+    // In a real app, you'd want to add a DELETE /api/session/{id} endpoint
+    removeSession(sessionId);
     toast({
-      title: "Session deleted",
-      description: "Session and all media have been removed",
+      title: "Session removed",
+      description: "Session removed from view (will be auto-deleted after expiration)",
     });
   };
 
@@ -183,10 +164,16 @@ const Index = () => {
           </div>
           
           <div className="flex justify-center">
+            {error && (
+              <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <p className="text-destructive text-sm">{error}</p>
+              </div>
+            )}
             <SessionStatus
               sessions={sessions}
               onViewSession={handleViewSession}
               onDeleteSession={handleDeleteSession}
+              loading={loading}
             />
           </div>
         </div>

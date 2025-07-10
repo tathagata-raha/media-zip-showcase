@@ -8,12 +8,10 @@ import { Progress } from '@/components/ui/progress';
 export type SessionStatus = 'queued' | 'downloading' | 'processing' | 'ready' | 'failed';
 
 export interface Session {
-  id: string;
+  session_id: string;
   status: SessionStatus;
-  sourceType: 'file' | 'url';
-  sourceInfo: string;
-  createdAt: string;
-  expiresAt: string;
+  submitted_at: string;
+  expires_at: string;
   progress?: number;
   error?: string;
   mediaCount?: {
@@ -26,6 +24,7 @@ interface SessionStatusProps {
   sessions: Session[];
   onViewSession: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
+  loading?: boolean;
 }
 
 const getStatusConfig = (status: SessionStatus) => {
@@ -88,8 +87,22 @@ const formatTimeRemaining = (expiresAt: string) => {
 export const SessionStatus: React.FC<SessionStatusProps> = ({ 
   sessions, 
   onViewSession, 
-  onDeleteSession 
+  onDeleteSession,
+  loading = false
 }) => {
+  if (loading) {
+    return (
+      <Card className="w-full max-w-2xl shadow-soft">
+        <CardContent className="p-8 text-center">
+          <div className="text-muted-foreground">
+            <Loader2 className="mx-auto h-12 w-12 mb-4 animate-spin" />
+            <p className="text-lg font-medium mb-2">Loading sessions...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   if (sessions.length === 0) {
     return (
       <Card className="w-full max-w-2xl shadow-soft">
@@ -116,7 +129,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
           
           return (
             <div
-              key={session.id}
+              key={session.session_id}
               className="p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors"
             >
               <div className="flex items-center justify-between">
@@ -128,7 +141,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="font-medium truncate">
-                        Session {session.id.slice(0, 8)}
+                        Session {session.session_id.slice(0, 8)}
                       </p>
                       <Badge variant={statusConfig.variant}>
                         {statusConfig.label}
@@ -136,7 +149,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
                     </div>
                     
                     <p className="text-sm text-muted-foreground truncate">
-                      {session.sourceType === 'file' ? '📁' : '🔗'} {session.sourceInfo}
+                      Created {new Date(session.submitted_at).toLocaleString()}
                     </p>
                     
                     {session.mediaCount && (
@@ -154,10 +167,10 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
                 <div className="flex items-center gap-3">
                   <div className="text-right text-sm">
                     <p className="text-muted-foreground">
-                      Expires in {formatTimeRemaining(session.expiresAt)}
+                      Expires in {formatTimeRemaining(session.expires_at)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(session.createdAt).toLocaleTimeString()}
+                      {new Date(session.submitted_at).toLocaleTimeString()}
                     </p>
                   </div>
                   
@@ -166,7 +179,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
                       <Button
                         size="sm"
                         variant="gradient"
-                        onClick={() => onViewSession(session.id)}
+                        onClick={() => onViewSession(session.session_id)}
                       >
                         View
                       </Button>
@@ -174,7 +187,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => onDeleteSession(session.id)}
+                      onClick={() => onDeleteSession(session.session_id)}
                     >
                       Cancel
                     </Button>

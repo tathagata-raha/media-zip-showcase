@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    restart: always
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MAX_EXTRACTED_SIZE=1073741824
+      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+      - RATE_LIMIT_UPLOADS=5/minute
+      - RATE_LIMIT_LINKS=10/minute
+    restart: always
+
+  worker:
+    build:
+      context: .
+      dockerfile: celery_worker.Dockerfile
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MAX_EXTRACTED_SIZE=1073741824
+    restart: always
+
+  beat:
+    build:
+      context: .
+      dockerfile: celery_worker.Dockerfile
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MAX_EXTRACTED_SIZE=1073741824
+    command: celery -A tasks.celery_app beat --loglevel=info
+    restart: always 

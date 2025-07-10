@@ -8,8 +8,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
 interface FileUploadProps {
-  onUpload: (file: File | string, type: 'file' | 'url') => void;
+  onUpload: (source: File | string, type: 'file' | 'url' | 'google_drive') => void;
   isUploading?: boolean;
+  slideshowOptions?: any;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({ onUpload, isUploading = false }) => {
@@ -62,10 +63,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUpload, isUploading = 
       return;
     }
 
-    // Basic URL validation
+    // Basic URL validation and source type detection
     try {
       new URL(urlInput);
-      onUpload(urlInput, 'url');
+      const isGoogleDrive = /drive\.google\.com|docs\.google\.com/.test(urlInput);
+      const type = isGoogleDrive ? 'google_drive' : 'url';
+      
+      onUpload(urlInput, type);
       setUrlInput('');
     } catch {
       toast({
