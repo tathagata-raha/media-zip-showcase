@@ -12,7 +12,7 @@ A full-stack web application for processing, sharing, and previewing ZIP files c
 - **ZIP Upload & Link Submission**: Upload ZIP files (up to 2GB) or provide public/Google Drive URLs.
 - **Media Extraction & Classification**: Automatically extracts and categorizes images, videos, and audio files.
 - **Slideshow Generation**: Creates MP4 slideshows from images with customizable settings (duration, resolution, transitions, background music).
-- **Temporary Sessions**: Each session is auto-expiring (12 hours for media, 24 hours for metadata).
+- **Temporary Sessions**: Each session is auto-expiring (30 days for media and metadata).
 - **Real-time Status**: Live progress tracking and status updates for uploads and processing.
 - **Session Management**: View, delete, and auto-cleanup sessions from the UI.
 
@@ -34,7 +34,7 @@ A full-stack web application for processing, sharing, and previewing ZIP files c
 
 ### Cleanup & Maintenance
 
-- **Auto-Cleanup**: Media files deleted after 12 hours, metadata after 24 hours.
+- **Auto-Cleanup**: Media files deleted after 30 days, metadata after 30 days.
 - **Manual Cleanup**: "Cleanup All Media" button in the UI and `/api/cleanup` endpoint.
 - **Scheduled Cleanup**: Celery Beat runs cleanup every 30 minutes.
 
@@ -44,6 +44,139 @@ A full-stack web application for processing, sharing, and previewing ZIP files c
 - **Drag-and-Drop Upload**: Easy ZIP file upload with progress feedback.
 - **Session Viewer**: Browse, preview, and download extracted media.
 - **Slideshow Progress**: See slideshow generation status and browse other media while waiting.
+
+---
+
+## 🐋 Docker Deployment (Recommended)
+
+### Prerequisites
+
+1. **Install Docker Desktop**:
+   - Download from [docker.com](https://www.docker.com/products/docker-desktop/)
+   - Install and start Docker Desktop
+
+2. **Install Git** (if not already installed):
+   - Download from [git-scm.com](https://git-scm.com/)
+
+### Step-by-Step Setup
+
+#### Step 1: Clone the Repository
+```bash
+git clone <repository-url>
+cd media-zip-showcase
+```
+
+#### Step 2: Verify Docker is Running
+```bash
+docker --version
+docker-compose --version
+```
+
+#### Step 3: Build and Start the Application
+```bash
+# Build all Docker images
+docker-compose build
+
+# Start all services
+docker-compose up -d
+```
+
+#### Step 4: Verify Everything is Running
+```bash
+# Check container status
+docker-compose ps
+
+# Check logs if needed
+docker-compose logs --tail=10
+```
+
+#### Step 5: Access the Application
+
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+
+### Useful Docker Commands
+
+#### View Logs
+```bash
+# All services
+docker-compose logs -f
+
+# Specific service
+docker-compose logs frontend -f
+docker-compose logs backend -f
+```
+
+#### Stop the Application
+```bash
+docker-compose down
+```
+
+#### Restart Services
+```bash
+# Restart all
+docker-compose restart
+
+# Restart specific service
+docker-compose restart frontend
+```
+
+#### Update and Rebuild
+```bash
+# If you make code changes
+docker-compose build
+docker-compose up -d
+```
+
+### Network Access
+
+To access from other devices on your network:
+- **Frontend**: `http://<your-laptop-ip>:5173`
+- **Backend**: `http://<your-laptop-ip>:8000`
+
+Find your IP with:
+```bash
+# On Windows
+ipconfig
+
+# On Mac/Linux
+ifconfig
+# or
+ip addr show
+```
+
+### Troubleshooting Docker
+
+#### If containers fail to start:
+```bash
+# Check for port conflicts
+netstat -an | grep :5173
+netstat -an | grep :8000
+
+# Remove old containers and rebuild
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+#### If you can't access the frontend:
+```bash
+# Check if frontend is running
+docker-compose logs frontend
+
+# Restart frontend
+docker-compose restart frontend
+```
+
+#### If API calls fail:
+```bash
+# Check backend logs
+docker-compose logs backend
+
+# Test API directly
+curl http://localhost:8000/
+```
 
 ---
 
@@ -79,7 +212,11 @@ A full-stack web application for processing, sharing, and previewing ZIP files c
 
 ### Environment Variables
 
-See `backend/config.example.env` for all options.
+The application is pre-configured with:
+- **2GB max file upload size**
+- **30-day session expiration**
+- **Auto-cleanup of expired sessions**
+- **CORS enabled for localhost**
 
 ```bash
 # File Limits
@@ -87,8 +224,8 @@ MAX_FILE_SIZE=2147483648        # 2GB upload limit
 MAX_EXTRACTED_SIZE=1073741824   # 1GB extraction limit
 
 # Session TTL
-MEDIA_SESSION_TTL=43200         # 12 hours (media files)
-METADATA_SESSION_TTL=86400      # 24 hours (session data)
+MEDIA_SESSION_TTL=2592000       # 30 days (media files)
+METADATA_SESSION_TTL=2592000    # 30 days (session data)
 
 # Security
 CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
@@ -117,20 +254,24 @@ media-zip-showcase/
 │   ├── static/                # Static files (built frontend)
 │   ├── sessions/              # Session metadata JSON files
 │   ├── requirements.txt       # Python dependencies
-│   └── docker-compose.yml     # Docker configuration
+│   ├── Dockerfile             # Backend Docker image
+│   ├── celery_worker.Dockerfile # Celery worker Docker image
+│   └── docker-compose.yml     # Backend Docker configuration
 ├── frontend/                  # React TypeScript frontend
 │   ├── src/
 │   │   ├── pages/            # Main pages (Index, SessionView)
 │   │   ├── components/       # Reusable UI components
 │   │   ├── hooks/            # Custom React hooks
 │   │   └── lib/              # API client and utilities
-│   └── package.json          # Node.js dependencies
+│   ├── package.json          # Node.js dependencies
+│   └── Dockerfile            # Frontend Docker image
+├── docker-compose.yml         # Main Docker configuration
 └── README.md                 # This file
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Manual Setup (Alternative)
 
 ### Prerequisites
 
@@ -174,20 +315,6 @@ npm run dev
 
 ---
 
-## 🐋 Docker Deployment
-
-```bash
-cd backend
-docker-compose up --build
-```
-
-- **Backend**: FastAPI server (port 8000)
-- **Worker**: Celery worker for background processing
-- **Beat**: Celery beat for scheduled cleanup
-- **Redis**: Message broker and result backend
-
----
-
 ## 🔄 Session Lifecycle
 
 1. **Queued**: Session created, background job scheduled.
@@ -200,8 +327,8 @@ docker-compose up --build
 
 ## 🧹 Cleanup System
 
-- **Media Files**: Auto-deleted after 12 hours.
-- **Session Metadata**: Auto-deleted after 24 hours.
+- **Media Files**: Auto-deleted after 30 days.
+- **Session Metadata**: Auto-deleted after 30 days.
 - **Manual Cleanup**: `/api/cleanup` endpoint and UI button.
 - **Scheduled Cleanup**: Celery Beat runs cleanup every 30 minutes.
 
@@ -247,5 +374,4 @@ This project is provided as-is for educational and demonstration purposes.
 1. Fork the repository.
 2. Create a feature branch.
 3. Make your changes.
-4. Test thoroughly.
-5. Submit a pull request. 
+4. Test thoroughly. 
