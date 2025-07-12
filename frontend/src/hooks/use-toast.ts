@@ -6,7 +6,8 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 1000 // 1 second delay before removing from DOM after dismiss
+const TOAST_AUTO_DISMISS_DELAY = 3000 // 3 seconds auto-dismiss
 
 type ToasterToast = ToastProps & {
   id: string
@@ -54,6 +55,7 @@ interface State {
 }
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+const autoDismissTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
@@ -69,6 +71,30 @@ const addToRemoveQueue = (toastId: string) => {
   }, TOAST_REMOVE_DELAY)
 
   toastTimeouts.set(toastId, timeout)
+}
+
+const addToAutoDismissQueue = (toastId: string) => {
+  if (autoDismissTimeouts.has(toastId)) {
+    return
+  }
+
+  const timeout = setTimeout(() => {
+    autoDismissTimeouts.delete(toastId)
+    dispatch({
+      type: "DISMISS_TOAST",
+      toastId: toastId,
+    })
+  }, TOAST_AUTO_DISMISS_DELAY)
+
+  autoDismissTimeouts.set(toastId, timeout)
+}
+
+const clearAutoDismissTimeout = (toastId: string) => {
+  const timeout = autoDismissTimeouts.get(toastId)
+  if (timeout) {
+    clearTimeout(timeout)
+    autoDismissTimeouts.delete(toastId)
+  }
 }
 
 export const reducer = (state: State, action: Action): State => {
@@ -90,12 +116,13 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
+      // Clear auto-dismiss timeout when manually dismissed
       if (toastId) {
+        clearAutoDismissTimeout(toastId)
         addToRemoveQueue(toastId)
       } else {
         state.toasts.forEach((toast) => {
+          clearAutoDismissTimeout(toast.id)
           addToRemoveQueue(toast.id)
         })
       }
@@ -160,6 +187,9 @@ function toast({ ...props }: Toast) {
       },
     },
   })
+
+  // Start auto-dismiss timer
+  addToAutoDismissQueue(id)
 
   return {
     id: id,

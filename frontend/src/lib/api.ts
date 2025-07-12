@@ -7,12 +7,14 @@ export interface Session {
   status: SessionStatus;
   source_type: 'upload' | 'url' | 'google_drive';
   source_url?: string;
+  original_filename?: string;
   submitted_at: string;
   expires_at: string;
   metadata_expires_at: string;
   error_message?: string;
   slideshow_options?: any;
   manifest?: any;
+  progress?: number;
 }
 
 export interface SlideshowOptions {
@@ -32,6 +34,7 @@ export interface SessionListResponse {
   status: SessionStatus;
   submitted_at: string;
   expires_at: string;
+  original_filename?: string;
 }
 
 const API_BASE = '/api';
@@ -108,6 +111,13 @@ class ApiService {
   // Get list of all sessions
   async getSessions(): Promise<SessionListResponse[]> {
     return this.request<SessionListResponse[]>('/sessions');
+  }
+
+  // Delete a session
+  async deleteSession(sessionId: string): Promise<void> {
+    await this.request<void>(`/session/${sessionId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Get media file URL

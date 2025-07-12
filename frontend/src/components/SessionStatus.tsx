@@ -12,6 +12,7 @@ export interface Session {
   status: SessionStatus;
   submitted_at: string;
   expires_at: string;
+  original_filename?: string;
   progress?: number;
   error?: string;
   mediaCount?: {
@@ -141,7 +142,10 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="font-medium truncate">
-                        Session {session.session_id.slice(0, 8)}
+                        {session.original_filename 
+                          ? `${session.original_filename.replace('.zip', '')}_${session.session_id.slice(0, 8)}`
+                          : `Session ${session.session_id.slice(0, 8)}`
+                        }
                       </p>
                       <Badge variant={statusConfig.variant}>
                         {statusConfig.label}

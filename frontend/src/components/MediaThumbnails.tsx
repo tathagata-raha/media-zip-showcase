@@ -1,26 +1,63 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { type MediaItem } from './MediaPlayer';
-import { ImageIcon, Film } from 'lucide-react';
+import { ImageIcon, Film, Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface MediaThumbnailsProps {
   media: MediaItem[];
   currentIndex: number;
   onSelect: (index: number) => void;
   className?: string;
+  videosOnly?: boolean;
+  onVideosOnlyChange?: (videosOnly: boolean) => void;
 }
 
-export const MediaThumbnails: React.FC<MediaThumbnailsProps> = ({ media, currentIndex, onSelect, className }) => {
+export const MediaThumbnails: React.FC<MediaThumbnailsProps> = ({ 
+  media, 
+  currentIndex, 
+  onSelect, 
+  className,
+  videosOnly = true,
+  onVideosOnlyChange
+}) => {
+
+  // Filter media based on videosOnly toggle
+  const filteredMedia = videosOnly 
+    ? media.filter(item => item.type === 'video' || item.type === 'slideshow')
+    : media;
+
+  // Find the current item index in the filtered list
+  const currentItem = media[currentIndex];
+  const currentFilteredIndex = filteredMedia.findIndex(item => item.id === currentItem?.id);
+
+  const handleSelect = (filteredIndex: number) => {
+    const selectedItem = filteredMedia[filteredIndex];
+    const originalIndex = media.findIndex(item => item.id === selectedItem.id);
+    onSelect(originalIndex);
+  };
+
   return (
     <div className={`space-y-3 ${className}`}>
-        <h3 className="text-lg font-semibold px-1">Playlist</h3>
+        <div className="flex items-center justify-between px-1">
+            <h3 className="text-lg font-semibold">Playlist</h3>
+            <Button
+                variant={videosOnly ? "default" : "outline"}
+                size="sm"
+                onClick={() => onVideosOnlyChange?.(!videosOnly)}
+                className="flex items-center gap-2"
+            >
+                <Filter className="h-4 w-4" />
+                Videos only
+            </Button>
+        </div>
         <div className="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto pr-1">
-            {media.map((item, index) => {
-                const isSelected = index === currentIndex;
+            {filteredMedia.map((item, filteredIndex) => {
+                const isSelected = filteredIndex === currentFilteredIndex;
                 const Icon = item.type === 'image' ? ImageIcon : Film;
                 return (
                     <button
                         key={item.id}
-                        onClick={() => onSelect(index)}
+                        onClick={() => handleSelect(filteredIndex)}
                         className={`w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors ${
                             isSelected
                                 ? 'bg-primary/10 text-primary ring-2 ring-primary/50'
@@ -32,6 +69,8 @@ export const MediaThumbnails: React.FC<MediaThumbnailsProps> = ({ media, current
                              <img src="/slideshow-thumb.png" alt="Slideshow" className="w-full h-full object-cover rounded-md"/>
                            ) : item.type === 'image' ? (
                              <img src={item.url} alt={item.filename} className="w-full h-full object-cover rounded-md"/>
+                           ) : item.type === 'video' && item.thumbnailUrl ? (
+                             <img src={item.thumbnailUrl} alt={item.filename} className="w-full h-full object-cover rounded-md"/>
                            ) : (
                             <Icon className="w-6 h-6 text-muted-foreground" />
                            )}

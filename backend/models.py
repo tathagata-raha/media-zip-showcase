@@ -31,6 +31,7 @@ class SessionMetadata(BaseModel):
     session_id: str
     source_type: SourceType
     source_url: Optional[str] = None
+    original_filename: Optional[str] = None  # Original ZIP filename for display
     submitted_at: datetime
     expires_at: datetime
     metadata_expires_at: datetime
@@ -51,6 +52,7 @@ class MediaFile(BaseModel):
     file_size: int
     dimensions: Optional[tuple] = None  # (width, height) for images/videos
     duration: Optional[float] = None  # for videos/audio
+    thumbnail_path: Optional[str] = None  # path to thumbnail image for videos
 
 class SessionManifest(BaseModel):
     session_id: str

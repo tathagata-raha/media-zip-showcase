@@ -20,9 +20,16 @@ export function useSessions() {
       setError(null);
       const sessionList = await apiService.getSessions();
       
+      // Filter out expired sessions
+      const now = new Date();
+      const activeSessions = sessionList.filter(session => {
+        const expiresAt = new Date(session.expires_at);
+        return expiresAt > now;
+      });
+      
       // Enhance sessions with additional data
       const enhancedSessions: SessionWithProgress[] = await Promise.all(
-        sessionList.map(async (session) => {
+        activeSessions.map(async (session) => {
           try {
             // Get detailed session info for active sessions
             if (['queued', 'downloading', 'processing'].includes(session.status)) {
@@ -100,10 +107,22 @@ export function useSessions() {
     );
   }, []);
 
-  // Remove a session
+  // Remove a session (local only)
   const removeSession = useCallback((sessionId: string) => {
     setSessions(prev => prev.filter(session => session.session_id !== sessionId));
   }, []);
+
+  // Delete a session (API call + local removal)
+  const deleteSession = useCallback(async (sessionId: string) => {
+    try {
+      await apiService.deleteSession(sessionId);
+      removeSession(sessionId);
+      return true;
+    } catch (error) {
+      console.error('Failed to delete session:', error);
+      return false;
+    }
+  }, [removeSession]);
 
   return {
     sessions,
@@ -113,5 +132,6 @@ export function useSessions() {
     addSession,
     updateSession,
     removeSession,
+    deleteSession,
   };
 } 

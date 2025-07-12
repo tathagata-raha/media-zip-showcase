@@ -9,7 +9,7 @@ import { useSessions, type SessionWithProgress } from '@/hooks/useSessions';
 import { apiService, type SlideshowOptions as ApiSlideshowOptions } from '@/lib/api';
 
 const Index = () => {
-  const { sessions, loading, error, addSession, removeSession } = useSessions();
+  const { sessions, loading, error, addSession, removeSession, deleteSession } = useSessions();
   const [isUploading, setIsUploading] = useState(false);
   const [slideshowConfig, setSlideshowConfig] = useState<SlideshowConfig>({
     duration: 3,
@@ -74,14 +74,20 @@ const Index = () => {
     navigate(`/session/${sessionId}`);
   };
 
-  const handleDeleteSession = (sessionId: string) => {
-    // Note: Backend doesn't have a delete endpoint, so we just remove from local state
-    // In a real app, you'd want to add a DELETE /api/session/{id} endpoint
-    removeSession(sessionId);
-    toast({
-      title: "Session removed",
-      description: "Session removed from view (will be auto-deleted after expiration)",
-    });
+  const handleDeleteSession = async (sessionId: string) => {
+    const success = await deleteSession(sessionId);
+    if (success) {
+      toast({
+        title: "Session deleted",
+        description: "Session and all associated media files have been deleted",
+      });
+    } else {
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete session. It may have already been removed.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

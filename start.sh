@@ -78,19 +78,19 @@ npm install || echo "Failed to install frontend dependencies"
 echo "🚀 Starting services..."
 
 # Start backend in background
-cd ../backend || echo "Could not cd into backend"
+cd backend || echo "Could not cd into backend"
 echo "Starting FastAPI server..."
-python -m uvicorn app:app --reload --host 0.0.0.0 --port 8000 &
+python -m uvicorn app:app --reload --host 0.0.0.0 --port 8000
 BACKEND_PID=$!
 
 # Start Celery worker in background
 echo "Starting Celery worker..."
-celery -A tasks.celery_app worker --loglevel=info &
+celery -A tasks:celery_app worker --loglevel=info &
 WORKER_PID=$!
 
 # Start Celery beat in background
 echo "Starting Celery beat scheduler..."
-celery -A tasks.celery_app beat --loglevel=info &
+celery -A tasks:celery_app beat --loglevel=info &
 BEAT_PID=$!
 
 # Wait a moment for backend to start
@@ -107,7 +107,7 @@ fi
 
 # Start frontend
 echo "Starting frontend development server..."
-cd frontend || echo "Could not cd into frontend"
+cd ../frontend || echo "Could not cd into frontend"
 npm run dev &
 FRONTEND_PID=$!
 
@@ -167,4 +167,4 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 # Wait for user to stop
-wait 
+wait
