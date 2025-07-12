@@ -21,9 +21,9 @@ export function useSessions() {
       const sessionList = await apiService.getSessions();
       
       // Filter out expired sessions
-      const now = new Date();
+      const now = Date.now();
       const activeSessions = sessionList.filter(session => {
-        const expiresAt = new Date(session.expires_at);
+        const expiresAt = new Date(session.expires_at).getTime();
         return expiresAt > now;
       });
       

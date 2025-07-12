@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
-export type SessionStatus = 'queued' | 'downloading' | 'processing' | 'ready' | 'failed';
+export type SessionStatus = 'queued' | 'downloading' | 'processing' | 'ready' | 'generating_slideshow' | 'failed';
 
 export interface Session {
   session_id: string;
@@ -56,6 +56,13 @@ const getStatusConfig = (status: SessionStatus) => {
         icon: CheckCircle,
         label: 'Ready',
         color: 'bg-media-success text-primary-foreground',
+        variant: 'default' as const
+      };
+    case 'generating_slideshow':
+      return {
+        icon: Loader2,
+        label: 'Slideshow generating',
+        color: 'bg-media-processing text-primary-foreground animate-processing-spin',
         variant: 'default' as const
       };
     case 'failed':
@@ -179,7 +186,7 @@ export const SessionStatus: React.FC<SessionStatusProps> = ({
                   </div>
                   
                   <div className="flex gap-2">
-                    {session.status === 'ready' && (
+                    {(session.status === 'ready' || session.status === 'generating_slideshow') && (
                       <Button
                         size="sm"
                         variant="gradient"

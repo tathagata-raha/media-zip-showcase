@@ -1,109 +1,106 @@
 # 📁 Media ZIP Showcase
 
-A full-stack web application for processing and sharing ZIP files containing images, videos, and audio. Upload ZIP files or provide download links, and the system will extract media, generate slideshows, and create temporary playlists for easy sharing.
+A full-stack web application for processing, sharing, and previewing ZIP files containing images, videos, and audio. Upload ZIP files or provide download links, and the system will extract media, generate slideshows, and create temporary playlists for easy sharing.
+
+---
 
 ## ✨ Features
 
-### 🎯 Core Functionality
-- **ZIP Processing**: Upload ZIP files (max 500MB) or provide public/Google Drive URLs
-- **Media Classification**: Automatically categorizes images, videos, and audio files
-- **Slideshow Generation**: Creates MP4 slideshows from images with customizable settings
-- **Temporary Sessions**: Auto-expiring sessions (5-hour media, 24-hour metadata)
-- **Real-time Status**: Live progress tracking with WebSocket-like updates
+### Core Functionality
 
-### 🎨 Slideshow Customization
-- **Duration Control**: 0.5-10 seconds per image
-- **Resolution Options**: 1280x720 (HD) or 1920x1080 (Full HD)
-- **Transitions**: None, Fade, or Crossfade effects
-- **Background Music**: Optional audio overlay from uploaded files
+- **ZIP Upload & Link Submission**: Upload ZIP files (up to 2GB) or provide public/Google Drive URLs.
+- **Media Extraction & Classification**: Automatically extracts and categorizes images, videos, and audio files.
+- **Slideshow Generation**: Creates MP4 slideshows from images with customizable settings (duration, resolution, transitions, background music).
+- **Temporary Sessions**: Each session is auto-expiring (12 hours for media, 24 hours for metadata).
+- **Real-time Status**: Live progress tracking and status updates for uploads and processing.
+- **Session Management**: View, delete, and auto-cleanup sessions from the UI.
 
-### 🔒 Security Features
-- **Path Traversal Protection**: Prevents ZIP bomb and directory traversal attacks
-- **File Validation**: Strict file type and size limits
-- **Rate Limiting**: Upload and link submission rate limits
-- **Input Sanitization**: Filename and URL validation
-- **CORS Protection**: Configurable origin restrictions
+### Slideshow Customization
 
-## 🚀 Quick Start
+- **Duration Control**: 0.5–10 seconds per image.
+- **Resolution Options**: 1280x720 (HD) or 1920x1080 (Full HD).
+- **Transitions**: None, Fade, or Crossfade effects.
+- **Background Music**: Optional audio overlay from uploaded files.
 
-### Prerequisites
-- Python 3.8+
-- Node.js 16+
-- Redis
-- FFmpeg (for video processing)
+### Security & Reliability
 
-### 1. Backend Setup
+- **Path Traversal & ZIP Bomb Protection**: Prevents malicious archives and directory traversal.
+- **File Validation**: Strict file type and size limits, magic number validation.
+- **Rate Limiting**: Upload and link submission rate limits.
+- **Input Sanitization**: Filename and URL validation.
+- **CORS Protection**: Configurable origin restrictions.
+- **Session Security**: Secure UUID4 session IDs, automatic expiration, no guessable identifiers.
 
-```bash
-# Clone and navigate to backend
-cd backend
+### Cleanup & Maintenance
 
-# Install dependencies
-pip install -r requirements.txt
+- **Auto-Cleanup**: Media files deleted after 12 hours, metadata after 24 hours.
+- **Manual Cleanup**: "Cleanup All Media" button in the UI and `/api/cleanup` endpoint.
+- **Scheduled Cleanup**: Celery Beat runs cleanup every 30 minutes.
 
-# Copy environment template (optional)
-cp config.example.env .env
+### User Experience
 
-# Start Redis (if not already running)
-redis-server
+- **Modern React Frontend**: Responsive, mobile-friendly UI.
+- **Drag-and-Drop Upload**: Easy ZIP file upload with progress feedback.
+- **Session Viewer**: Browse, preview, and download extracted media.
+- **Slideshow Progress**: See slideshow generation status and browse other media while waiting.
 
-# Run database migrations (create directories)
-python -c "from config import ensure_directories; ensure_directories()"
+---
 
-# Start FastAPI server
-uvicorn app:app --reload --host 0.0.0.0 --port 8000
-```
+## 🛠️ API Endpoints
 
-### 2. Start Background Workers
+### Upload & Processing
 
-```bash
-# In separate terminals:
+- `POST /api/upload` — Upload a ZIP file.
+- `POST /api/submit_link` — Submit a download URL (public or Google Drive).
+- `GET /api/session/{id}` — Get session status and manifest.
+- `GET /api/sessions` — List all active sessions.
 
-# Celery worker
-celery -A tasks.celery_app worker --loglevel=info
+### Media Access
 
-# Celery beat (scheduled tasks)
-celery -A tasks.celery_app beat --loglevel=info
-```
+- `GET /api/media/{session_id}/{filename}` — Download a specific media file.
+- `GET /session/{session_id}` — Static session viewer (HTML).
 
-### 3. Frontend Setup
+### Cleanup
 
-```bash
-# Navigate to frontend
-cd frontend
+- `GET /api/cleanup` — Delete all media and session metadata (manual cleanup).
 
-# Install dependencies
-npm install
+---
 
-# Start development server
-npm run dev
-```
+## 🖼️ Supported File Formats
 
-### 4. Access Application
+- **Images**: `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.webp`
+- **Videos**: `.mp4`, `.webm`, `.avi`, `.mov`, `.mkv`
+- **Audio**: `.mp3`, `.wav`, `.ogg`, `.aac`, `.flac`
 
-- **Main App**: http://localhost:5173
-- **API Docs**: http://localhost:8000/docs
-- **Static Session Viewer**: http://localhost:8000/session/{session_id}
+---
 
-## 🐋 Docker Deployment
+## 🔧 Configuration
+
+### Environment Variables
+
+See `backend/config.example.env` for all options.
 
 ```bash
-# Navigate to backend directory
-cd backend
+# File Limits
+MAX_FILE_SIZE=2147483648        # 2GB upload limit
+MAX_EXTRACTED_SIZE=1073741824   # 1GB extraction limit
 
-# Start all services
-docker-compose up --build
+# Session TTL
+MEDIA_SESSION_TTL=43200         # 12 hours (media files)
+METADATA_SESSION_TTL=86400      # 24 hours (session data)
 
-# Access application at http://localhost:8000
+# Security
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+RATE_LIMIT_UPLOADS=5/minute
+RATE_LIMIT_LINKS=10/minute
+
+# Redis
+REDIS_URL=redis://localhost:6379/0
 ```
 
-The Docker setup includes:
-- **Backend**: FastAPI server (port 8000)
-- **Worker**: Celery worker for background processing
-- **Beat**: Celery beat for scheduled cleanup
-- **Redis**: Message broker and result backend
+---
 
-## 📁 Project Structure
+## 🏗️ Project Structure
 
 ```
 media-zip-showcase/
@@ -117,166 +114,137 @@ media-zip-showcase/
 │   │   ├── media_processor.py # File classification
 │   │   └── slideshow_generator.py # Video generation
 │   ├── static/                # Static files (built frontend)
+│   ├── sessions/              # Session metadata JSON files
 │   ├── requirements.txt       # Python dependencies
 │   └── docker-compose.yml     # Docker configuration
 ├── frontend/                  # React TypeScript frontend
 │   ├── src/
 │   │   ├── pages/            # Main pages (Index, SessionView)
 │   │   ├── components/       # Reusable UI components
-│   │   ├── hooks/           # Custom React hooks
-│   │   └── lib/             # API client and utilities
-│   └── package.json         # Node.js dependencies
-└── README.md                # This file
+│   │   ├── hooks/            # Custom React hooks
+│   │   └── lib/              # API client and utilities
+│   └── package.json          # Node.js dependencies
+└── README.md                 # This file
 ```
 
-## 🔧 Configuration
+---
 
-### Environment Variables
+## 🚀 Quick Start
 
-Key configuration options (see `backend/config.example.env`):
+### Prerequisites
+
+- Python 3.8+
+- Node.js 16+
+- Redis
+- FFmpeg (for video processing)
+
+### 1. Backend Setup
 
 ```bash
-# File Limits
-MAX_FILE_SIZE=524288000        # 500MB upload limit
-MAX_EXTRACTED_SIZE=1073741824  # 1GB extraction limit
-
-# Session TTL
-MEDIA_SESSION_TTL=18000        # 5 hours (media files)
-METADATA_SESSION_TTL=86400     # 24 hours (session data)
-
-# Security
-CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
-RATE_LIMIT_UPLOADS=5/minute    # Upload rate limit
-RATE_LIMIT_LINKS=10/minute     # Link submission rate limit
-
-# Redis
-REDIS_URL=redis://localhost:6379/0
+cd backend
+pip install -r requirements.txt
+cp config.example.env .env
+redis-server
+python -c "from config import ensure_directories; ensure_directories()"
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Supported File Formats
+### 2. Start Background Workers
 
-- **Images**: `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.webp`
-- **Videos**: `.mp4`, `.webm`, `.avi`, `.mov`, `.mkv`
-- **Audio**: `.mp3`, `.wav`, `.ogg`, `.aac`, `.flac`
+```bash
+# In separate terminals:
+celery -A tasks.celery_app worker --loglevel=info
+celery -A tasks.celery_app beat --loglevel=info
+```
 
-## 🛠️ API Endpoints
+### 3. Frontend Setup
 
-### Upload & Processing
-- `POST /api/upload` - Upload ZIP file
-- `POST /api/submit_link` - Submit download URL
-- `GET /api/session/{id}` - Get session status
-- `GET /api/sessions` - List all sessions
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-### Media Access
-- `GET /api/media/{session_id}/{filename}` - Download media file
-- `GET /session/{session_id}` - Static session viewer
+### 4. Access Application
 
-### Frontend Routes
-- `/` - Main upload interface
-- `/session/{session_id}` - React session viewer
+- **Main App**: http://localhost:5173
+- **API Docs**: http://localhost:8000/docs
+- **Static Session Viewer**: http://localhost:8000/session/{session_id}
+
+---
+
+## 🐋 Docker Deployment
+
+```bash
+cd backend
+docker-compose up --build
+```
+
+- **Backend**: FastAPI server (port 8000)
+- **Worker**: Celery worker for background processing
+- **Beat**: Celery beat for scheduled cleanup
+- **Redis**: Message broker and result backend
+
+---
 
 ## 🔄 Session Lifecycle
 
-1. **Queued**: Session created, background job scheduled
-2. **Downloading**: Downloading from URL (if applicable)
-3. **Processing**: Extracting ZIP, classifying media, generating slideshow
-4. **Ready**: Session complete, media accessible
-5. **Failed**: Error occurred during processing
+1. **Queued**: Session created, background job scheduled.
+2. **Downloading**: Downloading from URL (if applicable).
+3. **Processing**: Extracting ZIP, classifying media, generating slideshow.
+4. **Ready**: Session complete, media accessible.
+5. **Failed**: Error occurred during processing.
+
+---
 
 ## 🧹 Cleanup System
 
-- **Media Files**: Auto-deleted after 5 hours
-- **Session Metadata**: Auto-deleted after 24 hours
-- **Cleanup Job**: Runs every 30 minutes via Celery Beat
+- **Media Files**: Auto-deleted after 12 hours.
+- **Session Metadata**: Auto-deleted after 24 hours.
+- **Manual Cleanup**: `/api/cleanup` endpoint and UI button.
+- **Scheduled Cleanup**: Celery Beat runs cleanup every 30 minutes.
+
+---
 
 ## 🔒 Security Measures
 
-### File Security
-- ZIP bomb protection with extraction size limits
-- Path traversal prevention
-- Filename sanitization
-- Magic number validation for file types
+- **ZIP bomb protection** with extraction size limits.
+- **Path traversal prevention** and filename sanitization.
+- **Magic number validation** for file types.
+- **Rate limiting** on upload and link endpoints.
+- **CORS origin restrictions**.
+- **URL validation** for downloads.
+- **Private IP address blocking**.
+- **Secure UUID4 session IDs** and automatic session expiration.
 
-### Network Security
-- Rate limiting on upload endpoints
-- CORS origin restrictions
-- URL validation for downloads
-- Private IP address blocking
-
-### Session Security
-- Cryptographically secure UUID4 session IDs
-- No guessable session identifiers
-- Automatic session expiration
-
-## 📊 Recent Improvements
-
-### ✅ Fixed Issues
-- **Missing Configuration**: Added `MAX_EXTRACTED_SIZE` setting
-- **Rate Limiting**: Implemented upload and link submission limits
-- **CORS Security**: Environment-based origin configuration
-- **Frontend Deployment**: Built React app served from backend
-- **Slideshow Transitions**: Fixed complex crossfade implementation
-- **Docker Configuration**: Added missing environment variables
-
-### 🎯 Security Enhancements
-- Added slowapi for rate limiting
-- Improved CORS configuration
-- Enhanced URL validation
-- Better error handling and cleanup
-
-### 🚀 Performance Improvements
-- Optimized slideshow generation
-- Simplified transition effects
-- Better memory management
+---
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-**Redis Connection Error**
-```bash
-# Start Redis
-redis-server
-# Or with Docker
-docker run -d -p 6379:6379 redis:alpine
-```
-
-**FFmpeg Not Found**
-```bash
-# Ubuntu/Debian
-sudo apt install ffmpeg
-
-# macOS
-brew install ffmpeg
-
-# Windows
-# Download from https://ffmpeg.org/download.html
-```
-
-**Permission Errors**
-```bash
-# Ensure proper permissions for media directories
-chmod -R 755 backend/static/
-```
+- **Redis Connection Error**: Ensure Redis is running (`redis-server`).
+- **FFmpeg Not Found**: Install FFmpeg (`sudo apt install ffmpeg` or `brew install ffmpeg`).
+- **Permission Errors**: Ensure proper permissions for media directories (`chmod -R 755 backend/static/`).
 
 ### Development Tips
 
-- Use `uvicorn app:app --reload` for auto-reloading during development
-- Monitor Celery workers with `celery -A tasks.celery_app events`
-- Check Redis status with `redis-cli ping`
+- Use `uvicorn app:app --reload` for auto-reloading during development.
+- Monitor Celery workers with `celery -A tasks.celery_app events`.
+- Check Redis status with `redis-cli ping`.
+
+---
 
 ## 📝 License
 
 This project is provided as-is for educational and demonstration purposes.
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
 ---
 
-**Built with**: FastAPI, Celery, Redis, React, TypeScript, MoviePy, OpenCV 
+## 🤝 Contributing
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Make your changes.
+4. Test thoroughly.
+5. Submit a pull request. 

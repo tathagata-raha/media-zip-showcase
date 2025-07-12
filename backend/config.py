@@ -16,14 +16,14 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
     
     # File Upload Configuration
-    MAX_FILE_SIZE: int = 500 * 1024 * 1024  # 500MB
+    MAX_FILE_SIZE: int = 2 * 1024 * 1024 * 1024  # 2GB
     MAX_EXTRACTED_SIZE: int = 1024 * 1024 * 1024  # 1GB extracted content limit
     ALLOWED_IMAGE_FORMATS: list = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
     ALLOWED_VIDEO_FORMATS: list = ['.mp4', '.webm', '.avi', '.mov', '.mkv']
     ALLOWED_AUDIO_FORMATS: list = ['.mp3', '.wav', '.ogg', '.aac', '.flac']
     
     # Session Configuration
-    MEDIA_SESSION_TTL: int = 5 * 60 * 60  # 5 hours in seconds
+    MEDIA_SESSION_TTL: int = 12 * 60 * 60  # 12 hours in seconds
     METADATA_SESSION_TTL: int = 24 * 60 * 60  # 24 hours in seconds
     
     # Slideshow Configuration
@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     DEFAULT_RESOLUTION: tuple = (1280, 720)
     DEFAULT_TRANSITION_EFFECT: str = "fade"
     AVAILABLE_TRANSITIONS: list = ["none", "fade", "crossfade"]
+    MAX_SLIDESHOW_IMAGES: int = 30  # Maximum number of images to use in slideshow
     
     # Paths
     BASE_DIR: Path = Path(__file__).parent
@@ -45,7 +46,7 @@ class Settings(BaseSettings):
     
     # Download Configuration
     DOWNLOAD_TIMEOUT: int = 300  # 5 minutes
-    MAX_DOWNLOAD_SIZE: int = 500 * 1024 * 1024  # 500MB
+    MAX_DOWNLOAD_SIZE: int = 2 * 1024 * 1024 * 1024  # 2GB
     
     # CORS Configuration
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"

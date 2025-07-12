@@ -21,10 +21,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUpload, isUploading = 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
-      if (file.size > 500 * 1024 * 1024) { // 500MB limit
+      if (file.size > 2 * 1024 * 1024 * 1024) { // 2GB limit
         toast({
           title: "File too large",
-          description: "Please upload a ZIP file smaller than 500MB",
+          description: "Please upload a ZIP file smaller than 2GB",
           variant: "destructive"
         });
         return;
@@ -49,7 +49,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUpload, isUploading = 
       'application/zip': ['.zip'],
       'application/x-zip-compressed': ['.zip']
     },
-    maxSize: 500 * 1024 * 1024, // 500MB
+    maxSize: 2 * 1024 * 1024 * 1024, // 2GB
     multiple: false
   });
 
@@ -140,7 +140,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onUpload, isUploading = 
                     }
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {!isUploading && 'or click to browse (max 500MB)'}
+                    {!isUploading && 'or click to browse (max 2GB)'}
                   </p>
                 </div>
 

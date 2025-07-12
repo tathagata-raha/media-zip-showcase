@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useSessions, type SessionWithProgress } from '@/hooks/useSessions';
 import { apiService, type SlideshowOptions as ApiSlideshowOptions } from '@/lib/api';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const { sessions, loading, error, addSession, removeSession, deleteSession } = useSessions();
@@ -19,6 +20,15 @@ const Index = () => {
   });
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Sort sessions: non-failed by soonest expiration, failed at the bottom
+  const sortedSessions = [...sessions].sort((a, b) => {
+    // Failed sessions always at the bottom
+    if (a.status === 'failed' && b.status !== 'failed') return 1;
+    if (a.status !== 'failed' && b.status === 'failed') return -1;
+    // Both failed or both not failed: sort by expires_at ascending
+    return new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime();
+  });
 
   // Real upload handler with API integration
   const handleUpload = async (source: File | string, type: 'file' | 'url' | 'google_drive') => {
@@ -90,6 +100,20 @@ const Index = () => {
     }
   };
 
+  const handleCleanup = async () => {
+    try {
+      const result = await apiService.cleanupMedia();
+      toast({ title: 'Cleanup complete', description: result.message });
+      window.location.reload(); // or trigger session refresh if you want a softer update
+    } catch (error) {
+      toast({
+        title: 'Cleanup failed',
+        description: error instanceof Error ? error.message : 'An error occurred during cleanup',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -114,11 +138,11 @@ const Index = () => {
             <div className="flex flex-wrap justify-center gap-8 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Upload className="h-4 w-4" />
-                ZIP files up to 500MB
+                ZIP files up to 2GB
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                5-hour temporary access
+                12-hour temporary access
               </div>
               <div className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4" />
@@ -169,6 +193,13 @@ const Index = () => {
             </p>
           </div>
           
+          {/* Cleanup Button */}
+          <div className="flex justify-end mb-4">
+            <Button variant="destructive" onClick={handleCleanup}>
+              Cleanup All Media
+            </Button>
+          </div>
+
           <div className="flex justify-center">
             {error && (
               <div className="mb-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
@@ -176,7 +207,7 @@ const Index = () => {
               </div>
             )}
             <SessionStatus
-              sessions={sessions}
+              sessions={sortedSessions}
               onViewSession={handleViewSession}
               onDeleteSession={handleDeleteSession}
               loading={loading}

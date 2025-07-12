@@ -1,6 +1,6 @@
 // API service for communicating with the FastAPI backend
 
-export type SessionStatus = 'queued' | 'downloading' | 'processing' | 'ready' | 'failed';
+export type SessionStatus = 'queued' | 'downloading' | 'processing' | 'ready' | 'generating_slideshow' | 'failed';
 
 export interface Session {
   session_id: string;
@@ -130,9 +130,14 @@ class ApiService {
     return url.includes('drive.google.com') || url.includes('docs.google.com');
   }
 
-  // Determine source type from URL
-  getSourceType(url: string): 'url' | 'google_drive' {
-    return this.isGoogleDriveUrl(url) ? 'google_drive' : 'url';
+  // Cleanup all media on the server
+  async cleanupMedia(): Promise<{ message: string }> {
+    const response = await fetch('/api/cleanup', { method: 'GET' });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Cleanup failed: ${errorText}`);
+    }
+    return response.json();
   }
 }
 

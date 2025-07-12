@@ -98,8 +98,8 @@ GET /session/{session_id}
 
 Environment variables (see `config.py`):
 - `REDIS_URL`: Redis connection string
-- `MAX_FILE_SIZE`: Maximum ZIP file size (default: 500MB)
-- `MEDIA_SESSION_TTL`: Media cleanup time (default: 5 hours)
+- `MAX_FILE_SIZE`: Maximum ZIP file size (default: 2GB)
+- `MEDIA_SESSION_TTL`: Media cleanup time (default: 12 hours)
 - `METADATA_SESSION_TTL`: Metadata cleanup time (default: 24 hours)
 
 ## Project Structure

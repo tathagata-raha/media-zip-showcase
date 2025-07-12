@@ -60,7 +60,7 @@ async def upload_zip(
     if not file.filename or not file.filename.lower().endswith('.zip'):
         raise HTTPException(status_code=400, detail="Only ZIP files are allowed.")
     if file.size and file.size > settings.MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large.")
+        raise HTTPException(status_code=400, detail="File too large. Maximum allowed is 2GB.")
 
     session_id = str(uuid.uuid4())
     session_dir = settings.MEDIA_DIR / session_id
@@ -95,15 +95,15 @@ async def upload_zip(
         session_id=session_id,
         source_type=SourceType.UPLOAD,
         original_filename=file.filename,
-        submitted_at=now,
-        expires_at=now + timedelta(seconds=settings.MEDIA_SESSION_TTL),
-        metadata_expires_at=now + timedelta(seconds=settings.METADATA_SESSION_TTL),
+        submitted_at=now.isoformat(),
+        expires_at=(now + timedelta(seconds=settings.MEDIA_SESSION_TTL)).isoformat(),
+        metadata_expires_at=(now + timedelta(seconds=settings.METADATA_SESSION_TTL)).isoformat(),
         status=SessionStatus.QUEUED,
         slideshow_options=options
     )
     meta_path = settings.SESSIONS_DIR / f"{session_id}.json"
     with open(meta_path, 'w') as f:
-        json.dump(meta.dict(), f, default=str)
+        f.write(meta.json())
 
     # Enqueue background job
     process_zip_session.delay(session_id, SourceType.UPLOAD, None, options.dict() if options else None)
@@ -152,9 +152,9 @@ async def submit_link(
         source_type=source_type,
         source_url=source_url,
         original_filename=original_filename,
-        submitted_at=now,
-        expires_at=now + timedelta(seconds=settings.MEDIA_SESSION_TTL),
-        metadata_expires_at=now + timedelta(seconds=settings.METADATA_SESSION_TTL),
+        submitted_at=now.isoformat(),
+        expires_at=(now + timedelta(seconds=settings.MEDIA_SESSION_TTL)).isoformat(),
+        metadata_expires_at=(now + timedelta(seconds=settings.METADATA_SESSION_TTL)).isoformat(),
         status=SessionStatus.QUEUED,
         slideshow_options=options
     )
@@ -262,6 +262,25 @@ async def session_page(session_id: str):
     # Return the session viewer HTML page
     return FileResponse(settings.STATIC_DIR / "session_view.html")
 
+@app.get("/api/cleanup")
+def cleanup_media():
+    """
+    Delete everything under static/media (MEDIA_DIR) and all session metadata files (SESSIONS_DIR).
+    """
+    try:
+        # Delete all media
+        for item in settings.MEDIA_DIR.iterdir():
+            if item.is_dir():
+                shutil.rmtree(item, ignore_errors=True)
+            else:
+                item.unlink()
+        # Delete all session metadata
+        for meta_file in settings.SESSIONS_DIR.glob("*.json"):
+            meta_file.unlink()
+        return {"message": "All media and sessions cleaned up successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
     """
@@ -273,3 +292,4 @@ async def serve_spa(full_path: str):
     
     # Serve the main React app for client-side routing
     return FileResponse(settings.STATIC_DIR / "index.html") 
+

@@ -9,6 +9,7 @@ class SessionStatus(str, Enum):
     DOWNLOADING = "downloading"
     PROCESSING = "processing"
     READY = "ready"
+    GENERATING_SLIDESHOW = "generating_slideshow"
     FAILED = "failed"
 
 class SourceType(str, Enum):

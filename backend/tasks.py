@@ -2,6 +2,7 @@ import os
 import shutil
 import json
 import psutil
+import random
 from pathlib import Path
 from datetime import datetime, timedelta
 from celery import Celery
@@ -115,6 +116,8 @@ def process_zip_session(self, session_id: str, source_type: str, source_url: str
         # Queue slideshow generation as separate background task if images found
         if manifest.images:
             print(f"[DEBUG] Queuing slideshow generation for {len(manifest.images)} images")
+            # Update status to show slideshow is generating
+            _update_session_status(session_meta_path, SessionStatus.GENERATING_SLIDESHOW, manifest=manifest.dict(), progress=90)
             generate_slideshow.delay(session_id, slideshow_options or {})
         else:
             # No images, mark as 100% complete
@@ -162,6 +165,17 @@ def generate_slideshow(self, session_id: str, slideshow_options: dict = None):
         if not image_paths:
             print(f"[DEBUG] No images found for slideshow generation")
             return
+        
+        # Randomly select images if there are more than the configured limit
+        max_images = settings.MAX_SLIDESHOW_IMAGES
+        if len(image_paths) > max_images:
+            print(f"[DEBUG] Found {len(image_paths)} images, randomly selecting {max_images} for slideshow")
+            random.shuffle(image_paths)
+            image_paths = image_paths[:max_images]
+            print(f"[DEBUG] Selected {len(image_paths)} images for slideshow generation")
+            print(f"[DEBUG] Selected images: {[path.name for path in image_paths]}")
+        else:
+            print(f"[DEBUG] Using all {len(image_paths)} images for slideshow generation")
         
         # Get background music if available
         music_file = None

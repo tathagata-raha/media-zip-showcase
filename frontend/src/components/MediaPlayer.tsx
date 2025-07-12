@@ -44,6 +44,7 @@ interface MediaPlayerProps {
 export const MediaPlayer: React.FC<MediaPlayerProps> = ({ media, className, onNext, onPrev, hasNext, hasPrev }) => {
   const [shouldAutoplay, setShouldAutoplay] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [useMediaChrome, setUseMediaChrome] = useState(true);
 
   useEffect(() => {
     // Load Media Chrome components for all browsers
@@ -130,58 +131,84 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({ media, className, onNe
   }
 
   const renderVideo = () => {
-    return (
-      <media-controller 
-        style={{ 
-          width: '100%', 
-          height: '100%',
-          maxWidth: '100%',
-          maxHeight: '80vh',
-          display: 'block',
-          position: 'relative',
-          margin: '0 auto'
-        }}
-      >
-        <video
-          slot="media"
-          key={media.url}
-          src={media.url}
-          preload="metadata"
-          playsInline
-          autoPlay={shouldAutoplay}
-          muted={shouldAutoplay} // Muted autoplay for browser compatibility
+    if (useMediaChrome) {
+      return (
+        <media-controller 
           style={{ 
             width: '100%', 
             height: '100%',
             maxWidth: '100%',
             maxHeight: '80vh',
-            objectFit: 'contain',
             display: 'block',
-            backgroundColor: 'black'
-          }}
-          ref={videoRef}
-        />
-        <media-control-bar 
-          style={{ 
-            position: 'absolute',
-            bottom: '0',
-            left: '0',
-            right: '0',
-            zIndex: '10'
+            position: 'relative',
+            margin: '0 auto'
           }}
         >
-          <media-play-button></media-play-button>
-          <media-seek-backward-button seekoffset="5"></media-seek-backward-button>
-          <media-seek-forward-button seekoffset="5"></media-seek-forward-button>
-          <media-time-display showduration></media-time-display>
-          <media-time-range style={{ flex: '1', minWidth: '100px' }}></media-time-range>
-          <media-duration-display></media-duration-display>
-          <media-mute-button></media-mute-button>
-          <media-volume-range></media-volume-range>
-          <media-fullscreen-button></media-fullscreen-button>
-        </media-control-bar>
-      </media-controller>
-    );
+          <video
+            slot="media"
+            key={media.url}
+            src={media.url}
+            preload="metadata"
+            playsInline
+            autoPlay={shouldAutoplay}
+            muted={shouldAutoplay} // Muted autoplay for browser compatibility
+            ref={videoRef}
+            style={{ 
+              width: '100%', 
+              height: '100%',
+              maxWidth: '100%',
+              maxHeight: '80vh',
+              objectFit: 'contain',
+              display: 'block',
+              backgroundColor: 'black'
+            }}
+          />
+          <media-control-bar 
+            style={{ 
+              position: 'absolute',
+              bottom: '0',
+              left: '0',
+              right: '0',
+              zIndex: '10'
+            }}
+          >
+            <media-play-button></media-play-button>
+            <media-seek-backward-button seekoffset="5"></media-seek-backward-button>
+            <media-seek-forward-button seekoffset="5"></media-seek-forward-button>
+            <media-time-display showduration></media-time-display>
+            <media-time-range style={{ flex: '1', minWidth: '100px' }}></media-time-range>
+            <media-duration-display></media-duration-display>
+            <media-mute-button></media-mute-button>
+            <media-volume-range></media-volume-range>
+            <media-fullscreen-button></media-fullscreen-button>
+          </media-control-bar>
+        </media-controller>
+      );
+    } else {
+      return (
+        <div className="relative">
+          <video
+            key={media.url}
+            src={media.url}
+            preload="metadata"
+            playsInline
+            autoPlay={shouldAutoplay}
+            muted={shouldAutoplay}
+            ref={videoRef}
+            controls
+            style={{ 
+              width: '100%', 
+              height: '100%',
+              maxWidth: '100%',
+              maxHeight: '80vh',
+              objectFit: 'contain',
+              display: 'block',
+              backgroundColor: 'black'
+            }}
+          />
+        </div>
+      );
+    }
   };
 
   const renderMedia = () => {
@@ -240,6 +267,16 @@ export const MediaPlayer: React.FC<MediaPlayerProps> = ({ media, className, onNe
                 <ChevronLeft className="h-4 w-4" />
                 Previous
               </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUseMediaChrome(!useMediaChrome)}
+                className="flex items-center gap-2"
+              >
+                {useMediaChrome ? 'Switch to Native Player' : 'Switch to Media Chrome'}
+              </Button>
+              
               <Button
                 variant="secondary"
                 size="sm"

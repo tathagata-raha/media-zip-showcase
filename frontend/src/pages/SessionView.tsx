@@ -210,11 +210,7 @@ const SessionView = () => {
   // Update slideshow generation status when session changes
   useEffect(() => {
     if (session) {
-      const isGenerating = session?.manifest?.images && 
-        session.manifest.images.length > 0 && 
-        !session.manifest.slideshow_video &&
-        session.status === 'ready' &&
-        session.progress < 100;
+      const isGenerating = session.status === 'generating_slideshow';
       setIsSlideshowGenerating(isGenerating);
     }
   }, [session]);
