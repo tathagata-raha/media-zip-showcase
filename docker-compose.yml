@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/app
+      - ./static:/app/static
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MAX_EXTRACTED_SIZE=2147483648
+      - MEDIA_SESSION_TTL=2592000
+      - METADATA_SESSION_TTL=2592000
+      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://frontend:5173
+      - RATE_LIMIT_UPLOADS=5/minute
+      - RATE_LIMIT_LINKS=10/minute
+    restart: always
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: celery_worker.Dockerfile
+    volumes:
+      - ./backend:/app
+      - ./static:/app/static
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MAX_EXTRACTED_SIZE=2147483648
+      - MEDIA_SESSION_TTL=2592000
+      - METADATA_SESSION_TTL=2592000
+    restart: always
+
+  beat:
+    build:
+      context: ./backend
+      dockerfile: celery_worker.Dockerfile
+    volumes:
+      - ./backend:/app
+      - ./static:/app/static
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - MAX_EXTRACTED_SIZE=2147483648
+      - MEDIA_SESSION_TTL=2592000
+      - METADATA_SESSION_TTL=2592000
+    command: celery -A tasks.celery_app beat --loglevel=info
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: always 

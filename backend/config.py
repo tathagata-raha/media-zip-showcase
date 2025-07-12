@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     ALLOWED_AUDIO_FORMATS: list = ['.mp3', '.wav', '.ogg', '.aac', '.flac']
     
     # Session Configuration
-    MEDIA_SESSION_TTL: int = 12 * 60 * 60  # 12 hours in seconds
-    METADATA_SESSION_TTL: int = 24 * 60 * 60  # 24 hours in seconds
+    MEDIA_SESSION_TTL: int = 30 * 24 * 60 * 60  # 30 days in seconds
+    METADATA_SESSION_TTL: int = 30 * 24 * 60 * 60  # 30 days in seconds
     
     # Slideshow Configuration
     DEFAULT_IMAGE_DURATION: float = 3.0  # seconds

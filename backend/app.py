@@ -39,12 +39,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static media
+# Serve static media files only
 app.mount("/static", StaticFiles(directory=settings.STATIC_DIR), name="static")
 
 @app.get("/")
 def root():
-    return RedirectResponse(url="/static/index.html")
+    return {"message": "Media ZIP Showcase API", "docs": "/docs"}
 
 @app.post("/api/upload")
 @limiter.limit(settings.RATE_LIMIT_UPLOADS)
@@ -250,17 +250,7 @@ async def get_media_file(session_id: str, filename: str):
         raise HTTPException(status_code=404, detail="File not found.")
     return FileResponse(file_path)
 
-@app.get("/session/{session_id}")
-async def session_page(session_id: str):
-    """
-    Serve the session viewer page (static HTML fallback).
-    """
-    meta_path = settings.SESSIONS_DIR / f"{session_id}.json"
-    if not meta_path.exists():
-        raise HTTPException(status_code=404, detail="Session not found.")
-    
-    # Return the session viewer HTML page
-    return FileResponse(settings.STATIC_DIR / "session_view.html")
+
 
 @app.get("/api/cleanup")
 def cleanup_media():
@@ -279,17 +269,5 @@ def cleanup_media():
             meta_file.unlink()
         return {"message": "All media and sessions cleaned up successfully."}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
-
-@app.get("/{full_path:path}")
-async def serve_spa(full_path: str):
-    """
-    Serve the React SPA for all unmatched routes (client-side routing fallback).
-    """
-    # Only serve SPA for routes that don't start with /api or /static
-    if full_path.startswith(("api/", "static/", "session/")):
-        raise HTTPException(status_code=404, detail="Not found")
-    
-    # Serve the main React app for client-side routing
-    return FileResponse(settings.STATIC_DIR / "index.html") 
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}") 
 
