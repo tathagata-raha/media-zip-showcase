@@ -3,6 +3,7 @@
 A full-stack web application for processing, sharing, and previewing ZIP files containing images, videos, and audio. Upload ZIP files or provide download links, and the system will extract media, generate slideshows, and create temporary playlists for easy sharing.
 
 ---
+![Demo Screenshot](backend/static/ss.jpeg)
 
 ## ✨ Features
 
